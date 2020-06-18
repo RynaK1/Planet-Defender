@@ -4,7 +4,6 @@
 #include "GameObject.hpp"
 #include "PlanetDefenders.h"
 
-//using PlanetDefenders::ProjectileType;
 
 namespace PlanetDefenders
 {
@@ -37,7 +36,7 @@ namespace PlanetDefenders
         {
             output << "Projectile at" << " (" << p.getSprite().getPosition().x << ", " 
                    << p.getSprite().getPosition().y << ") "
-                   << "Type " << p.type;
+                   << "Type " << (int)p.type;
             return output;
         }
 

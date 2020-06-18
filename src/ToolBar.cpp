@@ -14,6 +14,7 @@
 #include <iomanip>
 
 using namespace PlanetDefenders;
+using namespace PlanetDefenders::utils;
 
 
 void ToolBar::initializeHpBar(int hp)
@@ -34,7 +35,7 @@ void ToolBar::updateHpBarSize(float hpPercent) {
 */
 void ToolBar::setPowerUp(PowerUpType type, unsigned int duration)
 {
-    if (type != HEAL)
+    if (type != PowerUpType::HEAL)
     {
         powerUpDuration = duration;
         drawPowerUp = true;
@@ -42,14 +43,9 @@ void ToolBar::setPowerUp(PowerUpType type, unsigned int duration)
     }
     switch (type)
     {
-    case SHIELD:
+    case PowerUpType::SHIELD:
         activatedPowerUpSp.setTextureRect(ToolBarShieldPowerUp);
         break;
-    //case HEAL:
-    //    activatedPowerUpSp.setTextureRect(ToolBarHealPowerUp);
-    //    powerUpDuration = 1;                       // show it for 1 sec
-    //    break;
-    // add more case here if you have more PowerUps
     }
 }
 
@@ -65,7 +61,6 @@ void ToolBar::generateDigitRects()
 
 void ToolBar::initializeSprites() {
     initializeHpBar(0);
-    // TODO use Game variable texture
 
     hpBorderSp = sf::Sprite(ToolBarTexture, PlanetDefenders::HpBorderRect);
     hpBorderSp.setPosition(sf::Vector2f(1136, 138));
@@ -107,12 +102,6 @@ void ToolBar::addProtection(int num1) {
             isProtect = false;
         }
     }
-}
-
-/*********/
-void ToolBar::updateShip() {
-    shipCount--;
-    deleteObjectFromVector(shipNum, shipCount);
 }
 
 /*

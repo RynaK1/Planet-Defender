@@ -1,10 +1,10 @@
 #ifndef PLANET_DEFENDERS_H
 #define PLANET_DEFENDERS_H
-#include "Collision.h"
-//#include "GameObject.hpp"
 #include <iostream>
 #include <vector>
+#include <map>
 #include <cmath>
+#include "Collision.h"
 /*
     Put constants and function in this namespace
     when you want it to share arcoss header files
@@ -13,10 +13,18 @@
 */
 namespace PlanetDefenders
 {
-    const enum ShipType { BlueShip, RedShip, GreenShip, BeeShip };
-    const enum PowerUpType { HEAL, SHIELD };
-    const enum ProjectileType { RedCircle, RedSharp, BlueRegular };
-    const enum Side { Left, Right, Top, Bottom };
+    const enum class ShipType { BlueShip, RedShip, GreenShip, BeeShip };
+    const enum class PowerUpType { HEAL, SHIELD };
+    const enum class ProjectileType { RedCircle, RedSharp, BlueRegular };
+    const enum class Side { Left, Right, Top, Bottom };
+    const enum class Direction { LeftDirection, RightDirection, UpDirection, DownDirection };
+    const enum class BossStates { MoveLeft, MoveRight, MoveDown, MoveUp, MoveTo, Shoot, Stay };
+    const std::map<Direction, sf::Vector2f> DirectionMap = {
+        {Direction::LeftDirection, sf::Vector2f(-1,0)},
+        {Direction::RightDirection, sf::Vector2f(1,0)},
+        {Direction::UpDirection, sf::Vector2f(0,-1)},
+        {Direction::DownDirection, sf::Vector2f(0,1)}
+    };
 
     // Destory Margin
     const int BaseDestroyBoundMargin = 500;
@@ -25,13 +33,13 @@ namespace PlanetDefenders
     // Score
     const unsigned int BossScore = 100;
     const unsigned int RegularEnemyScore = 1;
-  
+
     //ship info
-    const int SHIP_MAX_HP[4] = { 100, 50, 200, 80 };
-    const float SHIP_SPEED[4] = { 0.5, 0.8, 0.3, 0.65 };
-    const sf::Time SHIP_ATTACK_SPEED[4] = { sf::milliseconds(150), sf::milliseconds(100), sf::milliseconds(200), sf::milliseconds(125) };
-    const sf::IntRect SHIP_TEXTURE_RECT[4] = { sf::IntRect(0, 0, 31, 30), sf::IntRect(33, 0, 27, 21), sf::IntRect(62, 0, 39, 25), sf::IntRect(103, 0, 29, 30) };
-    const sf::IntRect SHIP_LASER_RECT[4] = { sf::IntRect(0, 33, 5, 11), sf::IntRect(33, 33, 7, 14), sf::IntRect(62, 33, 11, 11), sf::IntRect(103, 33, 3, 12) };
+    const int ShipMaxHp[4] = { 100, 50, 200, 80 };
+    const float ShipSpeed[4] = { 0.5f, 0.8f, 0.3f, 0.65f };
+    const sf::Time ShipAttackSpeed[4] = { sf::milliseconds(150), sf::milliseconds(100), sf::milliseconds(200), sf::milliseconds(125) };
+    const sf::IntRect ShipTextureRect[4] = { sf::IntRect(0, 0, 31, 30), sf::IntRect(33, 0, 27, 21), sf::IntRect(62, 0, 39, 25), sf::IntRect(103, 0, 29, 30) };
+    const sf::IntRect ShipLaserRect[4] = { sf::IntRect(0, 33, 5, 11), sf::IntRect(33, 33, 7, 14), sf::IntRect(62, 33, 11, 11), sf::IntRect(103, 33, 3, 12) };
 
     // For ToolBar
     const sf::IntRect HpBorderRect = sf::IntRect(228, 48, 41, 279);
@@ -68,7 +76,7 @@ namespace PlanetDefenders
     // resources path
     const std::string TextureBasePath = "resourses/texture/";
     const std::string AudioBasePath = "resourses/sound/";
-    const unsigned int FRAME_RATE_LIMIT = 65;
+    const unsigned int FrameRateLimit = 65;
 
     // PowerUp constants
 
@@ -80,10 +88,12 @@ namespace PlanetDefenders
     const float ShieldHp = 5;
 
     // Player
-    const float PlayerInitialHealth = 100.0f;
-    const float PlayerMaxSpeed = 50.0f;
-    const float PlayerProjectileDamage = 3.0f;
     const sf::Vector2u PlayerMovingBound = sf::Vector2u(1076, 720);
+    const float PlayerInitialHealth = 100.0f;
+    const float PlayerInitialSpeed = 10.0f;
+    const float PlayerMaxSpeed = 50.0f;
+    const float PlayerProjectileDamage = 3.1f;
+    const sf::Vector2f PlayerInitialPos = sf::Vector2f(PlayerMovingBound.x / 2.0f, PlayerMovingBound.y * 0.8f);
 
     // Enemy
     const float EnemyMaxScale = 3.0f;
@@ -95,11 +105,19 @@ namespace PlanetDefenders
     const int MaxProjectileNum = 500;
     const sf::Time PlayerShootTimeDelta = sf::milliseconds(100);
     const sf::Time shootInterval = sf::milliseconds(200);
-    const sf::Time BossShootTimeDelta = sf::milliseconds(300);
+
+    // Boss
+    //const sf::Time BossShootTimeDelta = sf::milliseconds(300);
+    const int BossShootTimeDelta = 300;
+    const float BossProjectileDamage = 5;
+    const int BossReviveInterval = 10;
+
 
     const sf::IntRect EnemyRectEye = sf::IntRect(0, 48, 23, 28);
     const sf::IntRect EnemyRectBlue = sf::IntRect(25, 48, 30, 28);
     const sf::IntRect EnemyRectBoss = sf::IntRect(0, 76, 182, 235);
+
+    const sf::Vector2f BossInitialPos = sf::Vector2f(PlayerMovingBound.x / 2.0f - EnemyRectBoss.width / 2.0f, 40.0f);
 
     const sf::IntRect PlayerProjectileRect = sf::IntRect(0, 32, 5, 11);
     const sf::IntRect ProjectileMiniCircle = sf::IntRect(89, 48, 8, 8);
@@ -107,7 +125,7 @@ namespace PlanetDefenders
     const sf::IntRect ProjectileRedSharp = sf::IntRect(80, 48, 7, 29);
 
     // Speed
-    const float ProjectileRedCircleSpd = 15;
+    const float ProjectileRedCircleSpd = 12;
     const float ProjectileRedSharpSpd = 6;
 
     // Damage
@@ -116,7 +134,6 @@ namespace PlanetDefenders
 
     const unsigned int NumberOfProjectileType = 2;
 
-    const float BossProjectileDamage = 5;
 
     // Game Window size
     const unsigned int WindowWidth = 1280;
@@ -129,32 +146,37 @@ namespace PlanetDefenders
     const sf::Keyboard::Key AccelerateKey = sf::Keyboard::RBracket;
     const sf::Keyboard::Key DeaccelerateKey = sf::Keyboard::LBracket;
     const sf::Keyboard::Key BiggerProjectile = sf::Keyboard::Quote;
+    const sf::Keyboard::Key ChangeShipTypeBlue = sf::Keyboard::Num1;
+    const sf::Keyboard::Key ChangeShipTypeRed = sf::Keyboard::Num2;
+    const sf::Keyboard::Key ChangeShipTypeGreen = sf::Keyboard::Num3;
+    const sf::Keyboard::Key ChangeShipTypeBee = sf::Keyboard::Num4;
 
 
     // utilites functions
     // put these into a libarary?
 
-    template <class T>
-    inline void deleteObjectFromVector(std::vector<T*>& v, int i)
-    {
-        std::swap(v[i], v.back());
-        delete v.back();
-        v.pop_back();
-    }
 
     // check if obj is out of a certain bound
     // can be used to check if obj should be deleted
     //bool isOutOfBound(GameObject* obj1);
     // calculate the unit vector
-    sf::Vector2f normalize(const sf::Vector2f& v);
-    // limit a vector
-    sf::Vector2f truncate(const sf::Vector2f& v, const float MAXIMUM);
+    namespace utils {
+        template <class T>
+        inline void deleteObjectFromVector(std::vector<T*>& v, int i)
+        {
+            std::swap(v[i], v.back());
+            delete v.back();
+            v.pop_back();
+        }
+        sf::Vector2f normalize(const sf::Vector2f& v);
+        // limit a vector
+        sf::Vector2f truncate(const sf::Vector2f& v, const float MAXIMUM);
 
-    void setSpriteOriginCenter(sf::Sprite& spr);
-    // draw outline of the sprite
-    // for debug purpose
-    void drawOutline(sf::Sprite& spr, sf::RenderWindow& window);
-
+        void setSpriteOriginCenter(sf::Sprite& spr);
+        // draw outline of the sprite
+        // for debug purpose
+        void drawOutline(sf::Sprite& spr, sf::RenderWindow& window);
+    }
 }
 #endif
 

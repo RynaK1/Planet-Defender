@@ -10,30 +10,35 @@ Player::~Player()
     delete objSprite;
 }
 
-
-void Player::applyPowerUp(PowerUp& powerUp)
+/*
+    apply power up effect to player
+*/
+void Player::applyPowerUp(PowerUp* powerUp)
 {
-    switch (powerUp.getType())
+    switch (powerUp->getType())
     {
-    case (PlanetDefenders::HEAL):
-        heal(static_cast<HealthRestore*>(&powerUp)->getHealAmount());
+    case (PlanetDefenders::PowerUpType::HEAL):
+        heal(static_cast<HealthRestore*>(powerUp)->getHealAmount());
         std::cout << "HEAL POWERUPPP" << std::endl;
-        if (activePowerUp.erase(&powerUp) >= 1)
+        if (activePowerUp.erase(powerUp) >= 1)
             std::cout << "HEAL POWERUPPP ERASED" << std::endl;
         break;
-    case (PlanetDefenders::SHIELD):
+    case (PlanetDefenders::PowerUpType::SHIELD):
         std::cout << "SHIELD POWERUPPP" << std::endl;
         break;
     }
 }
 
+/*
+    consume the power up and apply to the player
+*/
 void Player::addPowerUp(PowerUp* p) {
     std::cout << "ADD POWER UP" << std::endl;
     if (!hasPowerUp(p))
     {
         activePowerUp.insert(p);
         p->startClock();
-        applyPowerUp(*p);
+        applyPowerUp(p);
     }
     else
     {
@@ -50,12 +55,12 @@ Projectile* Player::shoot()
 {
     sf::Time elapse_time = shootClock.getElapsedTime();
     Projectile* newProjectile = nullptr;
-    if (elapse_time >= PlanetDefenders::SHIP_ATTACK_SPEED[shipNum])
+    if (elapse_time >= PlanetDefenders::ShipAttackSpeed[(int)shipType])
     {
         shootClock.restart();
         newProjectile = new Projectile(
             *objSprite->getTexture(),
-            PlanetDefenders::SHIP_LASER_RECT[shipNum],
+            PlanetDefenders::ShipLaserRect[(int)shipType],
             // x-axis offset by: 2.0f
             getSprite().getPosition() + sf::Vector2f((getBound().width / 2.0f) - 2.0f, 0.0f)
         );

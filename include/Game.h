@@ -7,13 +7,13 @@
 #include "Player.h"
 #include "Enemy.h"
 #include "ToolBar.hpp"
-#include "Menu.h"
-#include "Options.h"
 #include "ShipSelection.hpp"
 #include "Boss.hpp"
 #include "Projectile.h"
-#include "Endscreen.h"
-#include "InputHighscore.h"
+#include <Menu.h>
+#include <Options.h>
+#include <Endscreen.h>
+#include <InputHighscore.h>
 class Game
 {
     bool GAME_PAUSED = 0;
@@ -36,7 +36,7 @@ class Game
     sf::Sound powerupSound;
     sf::SoundBuffer enemyHurtSoundBuffer;
     sf::Sound enemyHurtSound;
-    sf::Texture SPACE_TEXTURE;
+    sf::Texture SpaceTexture;
 
 
     // background texture
@@ -69,17 +69,17 @@ class Game
     sf::Clock genPowerUpClock;
     sf::Clock genEnemyClock;
     sf::Clock genBossClock;
+    sf::Clock bossMoveClock;
     sf::Clock gameClock;
     
     // States
     enum ShipType shipType;
-    int numEnemy;
-    int enemyNum;
-    bool BossShown = true;
+    bool ShowBoss = false;
     bool BackdoorTriggered = false;
     bool InfinityHpTriggered = false;
     bool BiggerProjTriggered = false;
 
+    BossStates bossMoveDir = BossStates::MoveRight;
     
 public:
     Game();
@@ -94,6 +94,7 @@ public:
     void generatePowerUp();
     //void initEnemy(const sf::Vector2u, unsigned int, unsigned int);
     void loadAllMusic();
+    void updateBoss(BossStates state, sf::Vector2f destination);
     void updateGame();
     void drawGame();
     void pauseGame();
@@ -117,6 +118,7 @@ public:
     void collisionPlayerProjAndEnemy();
     void collisionEnemyProjAndShield();
     void collisionBossProjAndShield();
+    void collisionPlayerAndBoss();
     // Collision between enemyProjectile and player
     void collisionEnemyProjAndPlayer();
     // Check colliision between enemy and player

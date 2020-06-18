@@ -3,6 +3,7 @@
 #include <cmath>
 
 using namespace PlanetDefenders;
+using namespace PlanetDefenders::utils;
 
 GameObject::GameObject(const sf::Texture& texture, const sf::IntRect& rect, const sf::Vector2f& pos, const sf::Vector2f& dir, float spd)
 {
@@ -15,7 +16,6 @@ GameObject::GameObject(const sf::Texture& texture, const sf::IntRect& rect, cons
 
 void GameObject::move()
 {
-    //printf("%f %f --\n", dummyShape->getPosition().x, dummyShape->getPosition().y);
     objSprite->move(this->getVelocity());
 
     // if movingBound == (0, 0) that means no movingBound
@@ -33,10 +33,26 @@ void GameObject::move(const sf::Vector2f& dir)
     this->move();
 }
 
+bool PlanetDefenders::GameObject::moveTo(const sf::Vector2f& destination)
+{
+    if (getPosition() != destination)
+    {
+        static sf::Vector2f dir = normalize(destination - getPosition());
+        setDirection(dir);
+        move();
+        return false;
+    }
+    return true;
+}
+
 // Getters
 
 const sf::Vector2f GameObject::getVelocity() const { return speed * direction; }
 
+/*
+    set the direction of the GameObject to another GameObject
+    lower the SteeringCoefficient to make it steer harder
+*/
 void GameObject::moveToward(GameObject& obj)
 {
     const static float SteeringCoefficient = 40.0f;

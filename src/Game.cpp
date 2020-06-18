@@ -3,6 +3,11 @@
 #include <cmath>
 #include <SFML/Graphics.hpp>
 #include <SFML/Audio.hpp>
+#include <ResourceNotLoaded.h>
+#include <Menu.h>
+#include <Options.h>
+#include <Endscreen.h>
+#include <InputHighscore.h>
 #include "Collision.h"
 #include "Game.h"
 #include "Player.h"
@@ -10,13 +15,9 @@
 #include "ToolBar.hpp"
 #include "HealthRestore.h"
 #include "Shield.h"
-#include "Menu.h"
-#include "Options.h"
-#include "ResourceNotLoaded.h"
-#include "Endscreen.h"
-#include "InputHighscore.h"
 
 using namespace PlanetDefenders;
+using namespace PlanetDefenders::utils;
 
 void Game::loadAllMusic()
 {
@@ -33,12 +34,10 @@ void Game::loadAllMusic()
         laserSound.setBuffer(laserSoundBuffer);
         laserSound.setVolume(120);
     }
-
     if (!powerupSoundBuffer.loadFromFile(AudioBasePath + "enemy_hurt.ogg"))
         throw MusicNotLoaded("enemy_hurt.ogg");
     else
         enemyHurtSound.setBuffer(powerupSoundBuffer);
-
     if (!enemyHurtSoundBuffer.loadFromFile(AudioBasePath + "powerup.ogg"))
         throw MusicNotLoaded("powerup.ogg");
     else {
@@ -47,12 +46,29 @@ void Game::loadAllMusic()
     }
 }
 
+template<class T>
+void Game::updateGameObjectArray(std::vector<T*>& arr)
+{
+    for (auto& v : arr)
+        v->move();
+}
+
+template<class T>
+void Game::drawGameObjectArray(std::vector<T*>& arr)
+{
+    for (int i = 0; i < arr.size(); i++)
+    {
+        if (arr[i]->isOutOfBound() == false)
+            window->draw(arr[i]->getSprite());
+        else
+            deleteObjectFromVector(arr, i);
+    }
+}
+
 void Game::pauseGame()
 {
-    if (GAME_PAUSED)
-        backgroundMusic.pause();
-    else
-        backgroundMusic.play();
+    if (GAME_PAUSED) backgroundMusic.pause();
+    else backgroundMusic.play();
 }
 
 bool Game::menuHandleKeyboard(sf::Event& event)
@@ -90,16 +106,16 @@ bool Game::menuHandleMouseClicked(sf::Event& event)
 {
     if (menu->inY(event, *window)) {
         if (menu->inXPlay(event, *window)) {
-            std::cout << "PLAY";
+            std::cout << "PLAY" << std::endl;
             return true;
         }
         else if (menu->inXOptions(event, *window)) {
-            std::cout << "Options";
+            std::cout << "Options" << std::endl;
             // to options view
             options->work(*window, event, *options, GameBackground, backgroundMusic);
         }
         else if (menu->inXExit(event, *window)) {
-            std::cout << "Exit";
+            std::cout << "Exit" << std::endl;
             window->close();
             return true;
         }
@@ -133,7 +149,7 @@ bool Game::displayMenu()
     sf::Event event;
     while (window->pollEvent(event)) {
         switch (event.type) {
-        case sf::Event::KeyPressed:
+        case sf::Event::KeyReleased:
             if (menuHandleKeyboard(event))
                 return true;
             //Clicking on a button
@@ -149,9 +165,9 @@ bool Game::displayMenu()
             return true;
             break;
         }
-        window->draw(GameBackground);
-        menu->draw(*window);
     }
+    window->draw(GameBackground);
+    menu->draw(*window);
     return false;
 }
 
@@ -160,13 +176,12 @@ void Game::collisionPlayerProjAndBoss()
     // Collision between playerProjectile and enemy
     for (int i = 0; i < playerProjectileArray.size(); i++)
     {
-        //if (checkCollision(playerProjectileArray[i], boss))
         if (playerProjectileArray[i]->collide(*dynamic_cast<GameObject*>(boss)))
         {
             enemyHurtSound.play();
             tool->addScore(1);
             boss->takeDamage(playerProjectileArray[i]->getDamage());
-            std::cout << "PROJECTILE COLIDED BOSS" << std::endl;
+            //std::cout << "PROJECTILE COLIDED BOSS" << std::endl;
             deleteObjectFromVector(playerProjectileArray, i);
             break;
         }
@@ -180,10 +195,9 @@ void Game::collisionBossProjAndPlayer()
         //if (checkCollision(bossProjectileArray[i], player))
         if (bossProjectileArray[i]->collide(*dynamic_cast<GameObject*>(player)))
         {
-            //enemyHurtSound.play();  playerHurtSound?
             player->takeDamage(bossProjectileArray[i]->getDamage());
 
-            std::cout << "BOSS PROJECTILE COLIDED PLAYER" << std::endl;
+            //std::cout << "BOSS PROJECTILE COLIDED PLAYER" << std::endl;
             deleteObjectFromVector(bossProjectileArray, i);
             break;
         }
@@ -197,18 +211,17 @@ void Game::collisionPlayerProjAndEnemy()
     {
         for (int j = 0; j < enemyArr.size(); j++)
         {
-            //if (checkCollision(playerProjectileArray[i], enemyArr[j]))
             if (playerProjectileArray[i]->collide(*dynamic_cast<GameObject*>(enemyArr[j])))
             {
                 enemyHurtSound.play();
                 enemyArr[j]->takeDamage(playerProjectileArray[i]->getDamage());
                 if (enemyArr[j]->isDead())
                 {
-                    tool->addScore(roundf(pow(enemyArr[j]->getAttribute(), 2) * RegularEnemyScore));
+                    tool->addScore(roundf(pow(enemyArr[j]->getAttribute(), 3) * RegularEnemyScore));
                     deleteObjectFromVector(enemyArr, j);
                 }
                 deleteObjectFromVector(playerProjectileArray, i);
-                std::cout << "PROJECTILE COLIDED ENEMY" << std::endl;
+                //std::cout << "PROJECTILE COLIDED ENEMY" << std::endl;
                 break;
             }
         }
@@ -220,7 +233,6 @@ void Game::collisionEnemyProjAndShield()
     // Collision between enemyProjectile player shield
     for (int i = 0; i < enemyProjectileArray.size(); i++)
     {
-        //if (checkCollision(&enemyProjectileArray[i]->getSprite(), &shieldSprite))
         if (enemyProjectileArray[i]->collide(shieldSprite))
         {
             deleteObjectFromVector(enemyProjectileArray, i);
@@ -241,11 +253,16 @@ void Game::collisionBossProjAndShield()
     }
 }
 
+void Game::collisionPlayerAndBoss()
+{
+    if (player->collide(*dynamic_cast<GameObject*>(boss)))
+        player->takeDamage(0.5);
+}
+
 void Game::collisionEnemyProjAndPlayer()
 {
     for (int i = 0; i < enemyProjectileArray.size(); i++)
     {
-        //if (checkCollision(enemyProjectileArray[i], player))
         if (player->collide(*dynamic_cast<GameObject*>(enemyProjectileArray[i])))
         {
             player->takeDamage(enemyProjectileArray[i]->getDamage());
@@ -260,12 +277,10 @@ void Game::collisionEnemyAndPlayer()
 {
     for (int i = 0; i < enemyArr.size(); i++)
     {
-        //if (checkCollision(player, enemyArr[i]))
         if (player->collide(*dynamic_cast<GameObject*>(enemyArr[i])))
         {
-            std::cout << "PLAYER COLIDED ENEMY" << std::endl;
-            //player->takeDamage(1);
-            player->takeDamage(1);
+            //std::cout << "PLAYER COLIDED ENEMY" << std::endl;
+            player->takeDamage(0.5);
             break;
         }
     }
@@ -275,10 +290,9 @@ void Game::collisionPowerUpAndPlayer()
 {
     for (int i = 0; i < powerUpArr.size(); i++)
     {
-        //if (checkCollision(player, powerUpArr[i]))
         if (player->collide(*dynamic_cast<GameObject*>(powerUpArr[i])))
         {
-            std::cout << "PLAYER COLIDED POWERUP" << std::endl;
+            //std::cout << "PLAYER COLIDED POWERUP" << std::endl;
             // do not delete powerUp in GameLoop
             player->addPowerUp(dynamic_cast<PowerUp*>(powerUpArr[i]));
             tool->setPowerUp(
@@ -300,44 +314,35 @@ void Game::enemyRandomShoot()
         Projectile* newProjectile = dynamic_cast<Enemy*>(enemyArr[i])->shoot();
         if (newProjectile)
         {
-            std::cout << *newProjectile << std::endl;
+            //std::cout << *newProjectile << std::endl;
             newProjectile->roateToDirection();
             enemyProjectileArray.push_back(newProjectile);
         }
     }
 }
-
 void Game::bossRandomShoot()
 {
-    //int randShoot = random() % 4;
-    int randShoot = 0;
+    int randShoot = rand() % 4;
     std::vector<Projectile*> newProjectile;
     // v1 = boss position + boss bottom middle posision
-    const static sf::Vector2f v1 =
+    const sf::Vector2f v1 =
         sf::Vector2f(boss->getBound().width / 2.0f, boss->getBound().height) +
         boss->getPosition();
     const static sf::Vector2f offset =
         sf::Vector2f(player->getBound().width / 2.0f, player->getBound().height / 2.0f);
-    switch (randShoot) {
-    case 0:
-        for (int i = 0; i < 4; i++) {   // shoot for time each times with i projectile?
-            newProjectile = *boss->shoot(i);
-            //for (auto it = newProjectile.begin(); it != newProjectile.end(); it++)
-            for (auto& proj : newProjectile)
-            {
-                // vector with the direction to the player = player position - v1
-                proj->setDirection(normalize(player->getPosition() - v1 + offset));
-                proj->roateToDirection();
-                proj->getSprite().setColor(sf::Color::Green);
-            }
-            bossProjectileArray.insert(
-                bossProjectileArray.end(),
-                newProjectile.begin(),
-                newProjectile.end()
-            );
-        }
-        break;
+
+    newProjectile = *boss->shoot(randShoot);
+    for (auto& proj : newProjectile)
+    {
+        // vector with the direction to the player = player position - v1
+        proj->setDirection(normalize(player->getPosition() - v1 + offset));
+        proj->roateToDirection();
     }
+    bossProjectileArray.insert(
+        bossProjectileArray.end(),
+        newProjectile.begin(),
+        newProjectile.end()
+    );
 }
 
 // return the first index of the newly added enemy in enemyArr
@@ -347,7 +352,7 @@ int Game::generateDiagonalEnemy(int n, sf::Vector2f initialPos, sf::Vector2f dir
     Enemy* newEnemy;
     for (int i = 0; i < n; i++) {
         enemyArr.push_back(new Enemy(
-            SPACE_TEXTURE,
+            SpaceTexture,
             enemyRectArr[rand() % 2],
             sf::Vector2f(
                 initialPos.x + i * 20.f,
@@ -365,7 +370,7 @@ int Game::generateSquqreEnemy(int row, int col, sf::Vector2f initialPos, sf::Vec
     for (int i = 0; i < row; i++) {
         for (int j = 0; j < col; j++) {
             enemyArr.push_back(new Enemy(
-                SPACE_TEXTURE,
+                SpaceTexture,
                 enemyRectArr[rand() % 2],
                 sf::Vector2f(
                     initialPos.x + i * 40.f,
@@ -384,22 +389,22 @@ void decideSide(Side s, sf::Vector2f& initialPos, sf::Vector2f& direction)
     switch (s)
     {
     case Side::Top:
-        offset = rand() % PlayerMovingBound.x;
+        offset = rand() % (PlayerMovingBound.x - 100);
         initialPos = sf::Vector2f(offset, -400);
         direction = sf::Vector2f(0, 1);
         break;
     case Side::Bottom:
-        offset = rand() % PlayerMovingBound.x;
+        offset = rand() % (PlayerMovingBound.x - 100);
         initialPos = sf::Vector2f(offset, WindowHeight);
         direction = sf::Vector2f(0, -1);
         break;
     case Side::Left:
-        offset = rand() % PlayerMovingBound.y;
+        offset = rand() % (PlayerMovingBound.y - 100);
         initialPos = sf::Vector2f(-400, offset);
         direction = sf::Vector2f(1, 0);
         break;
     case Side::Right:
-        offset = rand() % PlayerMovingBound.y;
+        offset = rand() % (PlayerMovingBound.y - 100);
         initialPos = sf::Vector2f(WindowWidth, offset);
         direction = sf::Vector2f(-1, 0);
         break;
@@ -412,37 +417,46 @@ void decideSide(Side s, sf::Vector2f& initialPos, sf::Vector2f& direction)
     size, speed, damage, projectile size
 */
 void Game::generateEnemy() {
-    int time = genEnemyClock.getElapsedTime().asSeconds();
-    if (time > 2)           // every 2 seconds
+    if (genEnemyClock.getElapsedTime().asMilliseconds() > 3000 - boss->getDifficulty() * 100)           // every 2 - difficulty * 0.015 seconds
     {
-        enemyNum = 3 + rand() % 5;       // num of enemy
         sf::Vector2f initialPos; //where should the layout start
         sf::Vector2f direction; //they all move in the same direction
         int startIndex = 0;
-        float rows = rand() % 4;
-        float cols = rand() % 4;
-        int randNum = rand() % 2;
+        int layoutType = rand() % 3;
         Side s = static_cast<Side>(rand() % 4);
         decideSide(s, initialPos, direction);
-        std::cout << s << std::endl;
-        // 0.6 < x < 2.1
-        float randAttribute = (rand() % 15) / 10.0f + 0.8f;
-        if (randNum % 2 == 0)
+        // 0.8 < x < 2.6
+        float randAttribute = (rand() % 16) / 10.0f + 0.8f;
+        int enemyNum, rows, cols;
+        switch(layoutType)
+        {
+        case 0:
+            enemyNum = 3 + rand() % 5;
             startIndex = generateDiagonalEnemy(enemyNum, initialPos, direction, randAttribute);
-        else
+            break;
+        case 1:
+            rows = 1 + rand() % 4;
+            cols = 1 + rand() % 4;
             startIndex = generateSquqreEnemy(abs(rows), abs(cols), initialPos, direction, randAttribute);
-        genEnemyClock.restart();
+            break;
+        case 2: // horizontal line of enemy
+            enemyNum = 3 + rand() % 5;
+            startIndex = generateSquqreEnemy(enemyNum, 1, initialPos, direction, randAttribute);
+            break;
+        }
         // set the enemy from first index to the last element
         for (int i = startIndex; i < enemyArr.size(); i++) {
             enemyArr[i]->setDirection(direction);
             std::cout << *enemyArr[i] << std::endl;
         }
+        genEnemyClock.restart();
     }
 }
 
 Game::Game()
 {
-    shipType = BlueShip; //ADD SOMETHING IN MENU TO SELECT SHIP (0 to 3)
+    srand(static_cast<unsigned int>(time(0)));
+    // screens setup
     menu = new Menu(WindowWidth, WindowHeight);
     options = new Options(WindowWidth, WindowHeight);
     endscreen = new Endscreen(WindowWidth, WindowHeight);
@@ -450,8 +464,7 @@ Game::Game()
 
     // window setup
     window = new sf::RenderWindow(sf::VideoMode(WindowWidth, WindowHeight), GameTitle, sf::Style::Close | sf::Style::Resize);
-    //std::cout << window->getSize().x << " " << window->getSize().y << std::endl;
-    window->setFramerateLimit(FRAME_RATE_LIMIT);
+    window->setFramerateLimit(FrameRateLimit);
 
     // sounds setup
     try { loadAllMusic(); }
@@ -461,17 +474,12 @@ Game::Game()
     backgroundMusic.setLoop(true);
 
     // base texture setup
-    if (!SPACE_TEXTURE.loadFromFile(TextureBasePath + "spaceSprites.png"))
+    if (!SpaceTexture.loadFromFile(TextureBasePath + "spaceSprites.png"))
         throw TextureNotLoaded("spaceSprites.png");
     if (!BackgroundTexture.loadFromFile(TextureBasePath + "spaceBackground.png"))
         throw TextureNotLoaded("spaceBackground.png");
     if (!ToolBarBackgroundTexture.loadFromFile(TextureBasePath + "toolbar.png"))
         throw TextureNotLoaded("toolbar.png");
-
-    // Smooth or no smooth?
-    SPACE_TEXTURE.setSmooth(1);
-    BackgroundTexture.setSmooth(1);
-    ToolBarBackgroundTexture.setSmooth(1);
 
     GameBackground = sf::Sprite(BackgroundTexture);
     sf::Vector2u TextureSize = BackgroundTexture.getSize();
@@ -480,39 +488,37 @@ Game::Game()
     float ScaleY = (float)WindowSize.y / TextureSize.y;
     GameBackground.setScale(ScaleX, ScaleY);
 
+    // Player
+    shipType = static_cast<ShipType>(rand() % 4);
+    player = new Player(SpaceTexture, ShipTextureRect[(int)shipType], PlayerInitialPos, shipType);
+    player->setMovingBoundary(PlayerMovingBound);
+    player->getSprite().scale(sf::Vector2f(1, 1) * 1.5f);
+
     // ToolBar
     ToolBarBackground = sf::Sprite(ToolBarBackgroundTexture, sf::IntRect(0, 0, 204, 720));
     ToolBarBackground.setPosition(sf::Vector2f(1076, 0));
-    tool = new ToolBar(sf::Vector2f(980, 0));
+    tool = new ToolBar(sf::Vector2f(980, 0), ToolBarBackgroundTexture);
+    tool->updateHpBarSize(player->getHp() / ShipMaxHp[(int)shipType]); //send percentage of health
     assert(tool);           // Make sure tool is not null
 
-    player = new Player(SPACE_TEXTURE, SHIP_TEXTURE_RECT[shipType], sf::Vector2f(100, 100), shipType);
-
-    player->setMovingBoundary(PlayerMovingBound);
-    player->getSprite().scale(sf::Vector2f(1, 1) * 1.5f);
-    tool->updateHpBarSize(player->getHp() / SHIP_MAX_HP[shipType]); //send percentage of health
-
-    // demo
-    // build enemies array
-    //initEnemy(window->getSize());
 
     enemyRectArr.push_back(EnemyRectEye);
     enemyRectArr.push_back(EnemyRectBlue);
 
-    boss = new Boss(SPACE_TEXTURE, EnemyRectBoss, sf::Vector2f((window->getSize().x - tool->getSize().x) / 2, 0));
-    //bossHp = -100;
-    shieldSprite = sf::Sprite(SPACE_TEXTURE);
+    boss = new Boss(SpaceTexture, EnemyRectBoss, BossInitialPos);
+    boss->setSpeed(1);
+    // "disable" boss
+    boss->getSprite().setColor(sf::Color::Color(125, 125, 125, 125));
+    
+    // Shield
+    shieldSprite = sf::Sprite(SpaceTexture);
     shieldSprite.setTextureRect(ShieldRect);
     setSpriteOriginCenter(shieldSprite);
     shieldSprite.setScale(1.4f, 1.4f);
 
     bossSignSprite = sf::Sprite(ToolBarBackgroundTexture, sf::IntRect(0, 720, 204, 64));
     bossSignSprite.setPosition(sf::Vector2f(1076.f, 581.0f));
-
-    genPowerUpClock.restart();
-    genEnemyClock.restart();
-    genBossClock.restart();
-    gameClock.restart();
+    restartClocks();
 }
 
 
@@ -520,25 +526,19 @@ void Game::handleKeyInput()
 {
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::A))
     {
-        player->move(sf::Vector2f(-SHIP_SPEED[shipType], 0.0f));
+        player->move(sf::Vector2f(-ShipSpeed[(int)shipType], 0.0f));
     }
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::D))
     {
-        player->move(sf::Vector2f(SHIP_SPEED[shipType], 0.0f));
+        player->move(sf::Vector2f(ShipSpeed[(int)shipType], 0.0f));
     }
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::W))
     {
-        player->move(sf::Vector2f(0.0f, -SHIP_SPEED[shipType]));
+        player->move(sf::Vector2f(0.0f, -ShipSpeed[(int)shipType]));
     }
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::S))
     {
-        player->move(sf::Vector2f(0.0f, SHIP_SPEED[shipType]));
-    }
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::R))
-    {
-        // demo
-        // press R the accerlerate
-        player->accelerate(1.1f);
+        player->move(sf::Vector2f(0.0f, ShipSpeed[(int)shipType]));
     }
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
     {
@@ -558,7 +558,6 @@ void Game::handleBackdoorKeyInput(sf::Keyboard::Key code)
         InfinityHpTriggered = !InfinityHpTriggered;
         break;
     case AccelerateKey:
-        // TODO reset player speed in restGame()
         player->accelerate(5);
         break;
     case DeaccelerateKey:
@@ -569,16 +568,31 @@ void Game::handleBackdoorKeyInput(sf::Keyboard::Key code)
         if (BiggerProjTriggered)
         {
             player->setBackdoorProjScale(5.0f);
-            player->setProjDamage(5.0f);
+            player->setProjDamage(15.0f);
         }
         else
         {
-            // TODO Add to resetGame()
             player->setBackdoorProjScale(1.0f);
-            player->setProjDamage(1.0f);
+            player->setProjDamage(PlayerProjectileDamage);
         }
+        break;
+    case ChangeShipTypeBlue:
+        player->changeType(ShipType::BlueShip);
+        shipType = ShipType::BlueShip;
+        break;
+    case ChangeShipTypeRed:
+        player->changeType(ShipType::RedShip);
+        shipType = ShipType::RedShip;
+        break;
+    case ChangeShipTypeGreen:
+        player->changeType(ShipType::GreenShip);
+        shipType = ShipType::GreenShip;
+        break;
+    case ChangeShipTypeBee:
+        player->changeType(ShipType::BeeShip);
+        shipType = ShipType::BeeShip;
+        break;
     }
-
 }
 
 void Game::generatePowerUp()
@@ -592,11 +606,11 @@ void Game::generatePowerUp()
         genPowerUpClock.restart();
         switch (randomPowerUpType)
         {
-        case HEAL:
-            powerUpArr.push_back(new HealthRestore(SPACE_TEXTURE, sf::Vector2f(randX, randY)));
+        case PowerUpType::HEAL:
+            powerUpArr.push_back(new HealthRestore(SpaceTexture, sf::Vector2f(randX, randY)));
             break;
-        case SHIELD:
-            powerUpArr.push_back(new Shield(SPACE_TEXTURE, sf::Vector2f(randX, randY)));
+        case PowerUpType::SHIELD:
+            powerUpArr.push_back(new Shield(SpaceTexture, sf::Vector2f(randX, randY)));
             break;
         default:
             break;
@@ -607,31 +621,54 @@ void Game::generatePowerUp()
     }
 }
 
-// hmm...
-template<class T>
-void Game::updateGameObjectArray(std::vector<T*>& arr)
-{
-    for (auto& v : arr)
-        v->move();
-}
 
-// hmm...
-template<class T>
-void Game::drawGameObjectArray(std::vector<T*>& arr)
+void Game::updateBoss(BossStates state = BossStates::Stay, sf::Vector2f destination = sf::Vector2f(0, 0))
 {
-    for (int i = 0; i < arr.size(); i++)
+    if (boss->isDead())
     {
-        if (arr[i]->isOutOfBound() == false)
-            window->draw(arr[i]->getSprite());
-        else
-            deleteObjectFromVector(arr, i);
+        tool->addScore(BossScore * boss->getDifficulty());
+        boss->getSprite().setColor(sf::Color::Color(125, 125, 125, 125));
+        boss->increaseDifficulty(0.2);
+        ShowBoss = false;
+        genBossClock.restart();
     }
+    else
+    {
+        bossRandomShoot();
+        collisionPlayerProjAndBoss();
+    }
+    switch (state)
+    {
+    case BossStates::MoveLeft:
+        boss->setDirection(DirectionMap.at(Direction::LeftDirection));
+        boss->move();
+        break;
+    case BossStates::MoveRight:
+        boss->setDirection(DirectionMap.at(Direction::RightDirection));
+        boss->move();
+        break;
+    case BossStates::MoveDown:
+        boss->setDirection(DirectionMap.at(Direction::DownDirection));
+        boss->move();
+        break;
+    case BossStates::MoveUp:
+        boss->setDirection(DirectionMap.at(Direction::UpDirection));
+        boss->move();
+        break;
+    case BossStates::MoveTo:        // does not work
+        boss->moveTo(destination);
+        break;
+    case BossStates::Stay:
+        boss->setDirection(sf::Vector2f(0, 0));
+        break;
+    }
+
 }
 
 void Game::updateGame()
 {
     collisionPlayerProjAndEnemy();
-    if (player->hasPowerUp(SHIELD))
+    if (player->hasPowerUp(PowerUpType::SHIELD))
     {
         collisionEnemyProjAndShield();
         collisionBossProjAndShield();
@@ -640,10 +677,10 @@ void Game::updateGame()
     {
         collisionEnemyProjAndPlayer();
         collisionEnemyAndPlayer();
+        if (ShowBoss)
+            collisionPlayerAndBoss();
     }
     collisionPowerUpAndPlayer();
-
-    tool->update();
     updateGameObjectArray(enemyProjectileArray);
     updateGameObjectArray(playerProjectileArray);
     updateGameObjectArray(enemyArr);
@@ -653,37 +690,36 @@ void Game::updateGame()
     // check all powerup 
     // remove from activePowerUp set 
     // if it passes the duration
-    player->removeAllEndedPowerUp();
-    boss->updateBossHpBarSize(boss->getHp());
-
-    if (!BossShown && static_cast<int>(genBossClock.getElapsedTime().asSeconds() + 1) % 5 == 0)
-    {
-        resetBoss();
-    }
-
     enemyRandomShoot();
-    if (BossShown) {
-        if (boss->isDead())
+
+    if (!ShowBoss && static_cast<int>(genBossClock.getElapsedTime().asSeconds() + 1) % BossReviveInterval == 0)
+        resetBoss();
+    if (ShowBoss)
+    {
+        // change direction when hit 200 or 800
+        if (boss->getPosition().x <= 200 || boss->getPosition().x >= 800)
         {
-            tool->addScore(BossScore);
-            boss->getSprite().setColor(sf::Color::Color(125, 125, 125));
-            BossShown = false;
-            genBossClock.restart();
+            if (bossMoveDir == BossStates::MoveRight)
+                bossMoveDir = BossStates::MoveLeft;
+            else if (bossMoveDir == BossStates::MoveLeft)
+                bossMoveDir = BossStates::MoveRight;
         }
-        bossRandomShoot();
-        collisionPlayerProjAndBoss();
+        updateBoss(bossMoveDir);
     }
     collisionBossProjAndPlayer();
+
     // only RedSharp will follow the player
     for (auto& proj : bossProjectileArray)
-        if (proj->getType() == RedSharp) proj->moveToward(*player);
+        if (proj->getType() == ProjectileType::RedSharp) proj->moveToward(*player);
     updateGameObjectArray(bossProjectileArray);
 
     if (InfinityHpTriggered)
-        player->setHp(PlanetDefenders::SHIP_MAX_HP[shipType]);
+        player->setHp(PlanetDefenders::ShipMaxHp[(int)shipType]);
+    player->removeAllEndedPowerUp();
 
-    tool->updateHpBarSize(player->getHp() / PlanetDefenders::SHIP_MAX_HP[shipType]);
-    boss->updateBossHpBarSize(boss->getHp());
+    tool->update();
+    tool->updateHpBarSize(player->getHp() / ShipMaxHp[(int)shipType]);
+    boss->updateBossHpBarSize();
 }
 
 void Game::drawGame() {
@@ -694,9 +730,7 @@ void Game::drawGame() {
     drawGameObjectArray(enemyArr);
     drawGameObjectArray(powerUpArr);
     drawGameObjectArray(bossProjectileArray);
-    // Demo, put to a function later
-    // draw shield if player has SHIELD power up
-    if (player->hasPowerUp(SHIELD))
+    if (player->hasPowerUp(PowerUpType::SHIELD))
     {
         shieldSprite.setPosition(
             player->getPosition() +
@@ -704,10 +738,9 @@ void Game::drawGame() {
         );
         window->draw(shieldSprite);
     }
-
     window->draw(ToolBarBackground);
     tool->drawTo(*window);
-    if (BossShown)
+    if (ShowBoss)
         window->draw(bossSignSprite);
     boss->drawTo(*window);
     window->display();
@@ -734,28 +767,40 @@ void Game::restartClocks()
     genPowerUpClock.restart();
     genEnemyClock.restart();
     genBossClock.restart();
+    bossMoveClock.restart();
     gameClock.restart();
 }
 
 void Game::resetBoss()
 {
-    BossShown = true;
+    ShowBoss = true;
     boss->getSprite().setColor(sf::Color::White);
-    boss->setHp(100);
+    boss->resetHp();
 }
 
 void Game::resetGame()
 {
-    tool->minusScore(tool->getScore());
-    tool->restartClock();
-    player->setHp(PlanetDefenders::SHIP_MAX_HP[shipType]);
     backgroundMusic.stop();
     backgroundMusic.play();
     enemyProjectileArray.clear();
     enemyArr.clear();
     powerUpArr.clear();
     bossProjectileArray.clear();
+    playerProjectileArray.clear();
+
+    tool->minusScore(tool->getScore());
+    tool->restartClock();
     restartClocks();
+    
+    shipType = static_cast<ShipType>(rand() % 4);
+    player->changeType(shipType);
+    player->getSprite().setPosition(PlayerInitialPos);
+    boss->setDifficulty(1);
+    boss->resetHp();
+    boss->getSprite().setColor(sf::Color::Color(125, 125, 125, 125));
+    boss->getSprite().setPosition(BossInitialPos);
+    ShowBoss = false;
+    BackdoorTriggered = false;
 }
 
 void Game::gameLoop() {
@@ -786,16 +831,24 @@ void Game::gameLoop() {
                     pauseGame();
                 }
                 if (e.key.code == BackdoorTriggerKey)
+                {
                     BackdoorTriggered = !BackdoorTriggered;
+                    if (!BackdoorTriggered)
+                    {
+                        InfinityHpTriggered = false;
+                        BiggerProjTriggered = false;
+                        player->setBackdoorProjScale(1.0f);
+                        player->setProjDamage(PlayerProjectileDamage);
+                        player->setSpeed(PlayerInitialSpeed);
+                        std::cout << "BACKDOOR OFF" << std::endl;
+                    }
+                    else
+                    {
+                        std::cout << "BACKDOOR ON" << std::endl;
+                    }
+                }
                 if (BackdoorTriggered)
                     handleBackdoorKeyInput(e.key.code);
-                else
-                {
-                    InfinityHpTriggered = false;
-                    BiggerProjTriggered = false;
-                    player->setBackdoorProjScale(1.0f);
-                    player->setProjDamage(PlayerProjectileDamage);
-                }
                 break;
             }
         }
@@ -820,12 +873,12 @@ void Game::gameLoop() {
             } while (!endscreen->work(*window, *endscreen, GameBackground, backgroundMusic));
             // leave the game
             if (window->isOpen() == false) break;
-            // reset everything in the game
-            resetGame();
-            // draw menu again
             backgroundMusic.setBuffer(titleThemeBuffer);
             backgroundMusic.play();
-            while (!displayMenu()) { sf::sleep(sf::milliseconds(10)); }
+            // draw menu again
+            while (!displayMenu()) { sf::sleep(sf::milliseconds(5)); }
+            // reset everything in the game
+            resetGame();
             backgroundMusic.setBuffer(backgroundBuffer);
             backgroundMusic.play();
         }
