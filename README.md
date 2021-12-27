@@ -1,5 +1,5 @@
 
-# CIS29_Group_Project
+# Planet Defender
   **A space-invader-like game?**
 
 # Requirement
